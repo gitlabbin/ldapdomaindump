@@ -1,10 +1,10 @@
 from __future__ import print_function
-from builtins import str
+
 import argparse
 import json
-import os.path
 import re
-from time import strftime, gmtime
+from builtins import str
+
 
 class PrettyOuput(object):
 
@@ -29,11 +29,11 @@ class PrettyOuput(object):
             return "Not Set"
         sec = abs(time) // 10000000
         days = sec // 86400
-        sec -= 86400*days
+        sec -= 86400 * days
         hrs = sec // 3600
-        sec -= 3600*hrs
+        sec -= 3600 * hrs
         mins = sec // 60
-        sec -= 60*mins
+        sec -= 60 * mins
         result = ""
         if days > 1:
             result += "{0} days ".format(days)
@@ -96,7 +96,8 @@ class PrettyOuput(object):
     ''')
         for user in users:
             desc = user['attributes'].get('description')[0] if user['attributes'].get('description') else "(null)"
-            print("Account: " + dc + "\\" + user['attributes']['sAMAccountName'][0] + "\tName: " + user['attributes']['name'][0] + "\tDesc: " + desc)
+            print("Account: " + dc + "\\" + user['attributes']['sAMAccountName'][0] + "\tName: " +
+                  user['attributes']['name'][0] + "\tDesc: " + desc)
 
         print("")
         for user in users:
@@ -126,11 +127,14 @@ class PrettyOuput(object):
                             user = "NT AUTHORITY\IUSR"
                         print("Group '" + group['attributes']['name'][0] + "' has member: " + dc + "\\" + user)
 
+
 def main():
     parser = argparse.ArgumentParser(description='LDAPDomainDump to pretty output like enum4linux.')
 
-    #Main parameters
-    parser.add_argument("-d", "--directory", help="The ldapdomaindump directory where the json files are saved. Required files: domain_users.json, domain_groups.json and domain_policy.json")
+    # Main parameters
+    parser.add_argument("-d", "--directory",
+                        help="The ldapdomaindump directory where the json files are saved. "
+                             "Required files: domain_users.json, domain_groups.json and domain_policy.json")
     args = parser.parse_args()
 
     if args.directory:
@@ -147,6 +151,7 @@ def main():
         pretty.groups_info(groups, dc.upper())
     else:
         print("Missing parameter --directory /output/")
+
 
 if __name__ == "__main__":
     main()

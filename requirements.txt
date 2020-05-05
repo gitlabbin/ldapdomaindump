@@ -1,0 +1,5 @@
+ldap3>=2.7
+dnspython
+pyasn1>=0.4.6
+future
+colorlog

@@ -1,16 +1,20 @@
 from __future__ import unicode_literals
+
 import argparse
-import os
-import logging
-import json
 import codecs
+import json
+import logging
+import os
 import re
-from ldapdomaindump import trust_flags, trust_directions
 from builtins import str
-from future.utils import itervalues, iteritems
+
+from future.utils import itervalues
+
+from ldapdomaindump.ldap.constants import trust_flags, trust_directions
 
 logging.basicConfig()
 logger = logging.getLogger('ldd2bloodhound')
+
 
 class Utils(object):
     @staticmethod
@@ -26,6 +30,7 @@ class Utils(object):
             'principal': '%s@%s' % (groupo['attributes']['sAMAccountName'][0].upper(), domain.upper()),
             'memberOf': groupo['attributes']['memberOf'] if 'memberOf' in groupo['attributes'] else []
         }
+
 
 class BloodHoundConverter(object):
     def __init__(self):
@@ -56,7 +61,8 @@ class BloodHoundConverter(object):
                 data = json.load(infile)
             # data is now a list of groups (objects)
             for group in data:
-                groupattrs = Utils.get_group_object(group, self.get_domain(group['attributes']['objectSid'][0], group['dn']))
+                groupattrs = Utils.get_group_object(group,
+                                                    self.get_domain(group['attributes']['objectSid'][0], group['dn']))
                 self.groups_by_dn[group['dn']] = groupattrs
                 self.groups_by_sid[group['attributes']['objectSid'][0]] = groupattrs
         return
@@ -90,12 +96,13 @@ class BloodHoundConverter(object):
             for group in itervalues(self.groups_by_dn):
                 for membergroup in group['memberOf']:
                     try:
-                        outfile.write('%s,%s,%s\n' % (self.groups_by_dn[membergroup]['principal'], group['principal'], 'group'))
+                        outfile.write(
+                            '%s,%s,%s\n' % (self.groups_by_dn[membergroup]['principal'], group['principal'], 'group'))
                     except KeyError:
                         logger.warning('Unknown group %s. Not found in groups cache!', membergroup)
 
     def write_trusts(self):
-        direction_map = {flag:meaning.capitalize() for meaning, flag in trust_directions.items()}
+        direction_map = {flag: meaning.capitalize() for meaning, flag in trust_directions.items()}
         # open output file first
         with codecs.open('trusts.csv', 'w', 'utf-8') as outfile:
             outfile.write('SourceDomain,TargetDomain,TrustDirection,TrustType,Transitive\n')
@@ -161,11 +168,14 @@ class BloodHoundConverter(object):
                 logger.debug('Unknown input file: %s', filename)
         return
 
-def ldd2bloodhound():
-    parser = argparse.ArgumentParser(description='LDAPDomainDump to BloodHound CSV converter utility. Supports users/computers/trusts conversion.')
 
-    #Main parameters
-    parser.add_argument("files", type=str, nargs='+', metavar='FILENAME', help="The ldapdomaindump json files to load. Required files: domain_users.json and domain_groups.json")
+def ldd2bloodhound():
+    parser = argparse.ArgumentParser(
+        description='LDAPDomainDump to BloodHound CSV converter utility. Supports users/computers/trusts conversion.')
+
+    # Main parameters
+    parser.add_argument("files", type=str, nargs='+', metavar='FILENAME',
+                        help="The ldapdomaindump json files to load. Required files: domain_users.json and domain_groups.json")
     parser.add_argument("-d", "--debug", action='store_true', help="Enable debug logger")
 
     args = parser.parse_args()
@@ -191,6 +201,7 @@ def ldd2bloodhound():
     logger.debug('Processing trusts')
     converter.write_trusts()
     print('Done!')
+
 
 if __name__ == '__main__':
     ldd2bloodhound()

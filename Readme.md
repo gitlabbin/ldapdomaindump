@@ -27,14 +27,14 @@ As well as two grouped files:
 ## Dependencies and installation
 Requires [ldap3](https://github.com/cannatag/ldap3) > 2.0 and [dnspython](https://github.com/rthalley/dnspython)
 
-Both can be installed with `pip install ldap3 dnspython`
+Both can be installed with `pip3 install ldap3 dnspython`
 
-The ldapdomaindump package can be installed with `python setup.py install` from the git source, or for the latest release with `pip install ldapdomaindump`.
+The ldapdomaindump package can be installed with `python3 setup.py install` from the git source, or for the latest release with `pip install ldapdomaindump`.
 
 ## Usage
 There are 3 ways to use the tool:
-- With just the source, run `python ldapdomaindump.py`
-- After installing, by running `python -m ldapdomaindump`
+- With just the source, run `python3 ldapdomaindump.py`
+- After installing, by running `python3 -m ldapdomaindump`
 - After installing, by running `ldapdomaindump`
 
 Help can be obtained with the -h switch:
