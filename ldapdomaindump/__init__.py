@@ -140,8 +140,8 @@ class domainDumpConfig(object):
         self.computers_by_os = 'domain_computers_by_os' #Computers sorted by OS
 
         #Output formats
-        self.outputhtml = True
-        self.outputjson = True
+        self.outputhtml = False
+        self.outputjson = False
         self.outputgrep = True
 
         #Output json for groups
@@ -224,33 +224,33 @@ class domainDumper(object):
     #Get all users
     def getAllUsers(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user))', attributes=MINIMAL_USERATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user))', attributes=MINIMAL_USERATTRIBUTES, paged_size=1000, generator=False)
         else:
-            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user))', attributes=ldap3.ALL_ATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user))', attributes=ldap3.ALL_ATTRIBUTES, paged_size=1000, generator=False)
         return self.connection.entries
 
     #Get all computers in the domain
     def getAllComputers(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectClass=computer)(objectClass=user))', attributes=MINIMAL_COMPUTERATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectClass=computer)(objectClass=user))', attributes=MINIMAL_COMPUTERATTRIBUTES, paged_size=1000, generator=False)
         else:
-            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectClass=computer)(objectClass=user))', attributes=ldap3.ALL_ATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectClass=computer)(objectClass=user))', attributes=ldap3.ALL_ATTRIBUTES, paged_size=1000, generator=False)
         return self.connection.entries
 
     #Get all user SPNs
     def getAllUserSpns(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))', attributes=MINIMAL_USERATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))', attributes=MINIMAL_USERATTRIBUTES, paged_size=1000, generator=False)
         else:
-            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))', attributes=ldap3.ALL_ATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search('%s' % (self.root), '(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))', attributes=ldap3.ALL_ATTRIBUTES, paged_size=1000, generator=False)
         return self.connection.entries
 
     #Get all defined groups
     def getAllGroups(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search(self.root, '(objectClass=group)', attributes=MINIMAL_GROUPATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search(self.root, '(objectClass=group)', attributes=MINIMAL_GROUPATTRIBUTES, paged_size=1000, generator=False)
         else:
-            self.connection.extend.standard.paged_search(self.root, '(objectClass=group)', attributes=ldap3.ALL_ATTRIBUTES, paged_size=500, generator=False)
+            self.connection.extend.standard.paged_search(self.root, '(objectClass=group)', attributes=ldap3.ALL_ATTRIBUTES, paged_size=1000, generator=False)
         return self.connection.entries
 
     #Get the domain policies (such as lockout policy)
@@ -281,7 +281,7 @@ class domainDumper(object):
 
     #Get group members recursively using LDAP_MATCHING_RULE_IN_CHAIN (1.2.840.113556.1.4.1941)
     def getRecursiveGroupmembers(self, groupdn):
-        self.connection.extend.standard.paged_search(self.root, '(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=%s))' % groupdn, attributes=MINIMAL_USERATTRIBUTES, paged_size=500, generator=False)
+        self.connection.extend.standard.paged_search(self.root, '(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=%s))' % groupdn, attributes=MINIMAL_USERATTRIBUTES, paged_size=1000, generator=False)
         return self.connection.entries
 
     #Resolve group ID to DN
@@ -426,6 +426,14 @@ class domainDumper(object):
         rw.generateTrustsReport(self)
         rw.generateComputersByOsReport(self)
         rw.generateUsersByGroupReport(self)
+
+    def dump_computers(self):
+        self.computers = self.getAllComputers()
+        if self.config.lookuphostnames:
+            self.lookupComputerDnsNames()
+        rw = reportWriter(self.config)
+        rw.generateComputersReport(self)
+
 
 class reportWriter(object):
     def __init__(self, config):
@@ -941,7 +949,7 @@ def main():
     dd = domainDumper(s, c, cnf)
 
     #Do the actual dumping
-    dd.domainDump()
+    dd.dump_computers()
     log_success('Domain dump finished')
 
 if __name__ == '__main__':
