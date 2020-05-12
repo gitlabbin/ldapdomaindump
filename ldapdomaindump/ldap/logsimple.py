@@ -22,8 +22,8 @@ class LessThanFilter(logging.Filter):
 def setup_logger():
     log = logging.getLogger()
     log.setLevel(logging.NOTSET)
-    format_str = '%(asctime)s - %(levelname)-8s - %(message)s'
-    date_format = '%Y-%m-%d %H:%M:%S'
+    format_str = "%(asctime)s - %(levelname)-8s - %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
     if HAVE_COLORLOG and os.isatty(2):
         formatter = colorlog.ColoredFormatter(
             "%(log_color)s[%(asctime)s %(levelname)-8s%(module)s]%(reset)s "
@@ -31,12 +31,13 @@ def setup_logger():
             datefmt="%Y-%m-%d %H:%M:%S",
             reset=True,
             log_colors={
-                'DEBUG': 'reset',
-                'INFO': 'green',
-                'WARNING': 'yellow',
-                'ERROR': 'red',
-                'CRITICAL': 'red',
-            })
+                "DEBUG": "reset",
+                "INFO": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "red",
+            },
+        )
     else:
         formatter = logging.Formatter(format_str, date_format)
     logging_handler_out = logging.StreamHandler(sys.stdout)

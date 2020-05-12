@@ -15,18 +15,18 @@ from ldapdomaindump.ldap.constants import *
 class DomainDumpConfig(object):
     def __init__(self):
         # Base path
-        self.basepath = '.'
+        self.basepath = "."
 
         # Output files basenames
-        self.groupsfile = 'domain_groups'  # Groups
-        self.usersfile = 'domain_users'  # User accounts
-        self.computersfile = 'domain_computers'  # Computer accounts
-        self.policyfile = 'domain_policy'  # General domain attributes
-        self.trustsfile = 'domain_trusts'  # Domain trusts attributes
+        self.groupsfile = "domain_groups"  # Groups
+        self.usersfile = "domain_users"  # User accounts
+        self.computersfile = "domain_computers"  # Computer accounts
+        self.policyfile = "domain_policy"  # General domain attributes
+        self.trustsfile = "domain_trusts"  # Domain trusts attributes
 
         # Combined files basenames
-        self.users_by_group = 'domain_users_by_group'  # Users sorted by group
-        self.computers_by_os = 'domain_computers_by_os'  # Computers sorted by OS
+        self.users_by_group = "domain_users_by_group"  # Users sorted by group
+        self.computers_by_os = "domain_computers_by_os"  # Computers sorted by OS
 
         # Output formats
         self.outputhtml = False
@@ -37,11 +37,13 @@ class DomainDumpConfig(object):
         self.groupedjson = False
 
         # Default field delimiter for greppable format is a tab
-        self.grepsplitchar = '\t'
+        self.grepsplitchar = "\t"
 
         # Other settings
-        self.lookuphostnames = False  # Look up hostnames of computers to get their IP address
-        self.dnsserver = ''  # Addres of the DNS server to use, if not specified default DNS will be used
+        self.lookuphostnames = (
+            False  # Look up hostnames of computers to get their IP address
+        )
+        self.dnsserver = ""  # Addres of the DNS server to use, if not specified default DNS will be used
         self.minimal = False  # Only query minimal list of attributes
 
 
@@ -66,21 +68,31 @@ class DomainDumper(object):
 
     # Get the server root from the default naming context
     def getRoot(self):
-        return self.server.info.other['defaultNamingContext'][0]
+        return self.server.info.other["defaultNamingContext"][0]
 
     # Query the groups of the current user
     def getCurrentUserGroups(self, username, domainsid=None):
-        self.connection.search(self.root, '(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s))' % username,
-                               attributes=['cn', 'memberOf', 'primaryGroupId'])
+        self.connection.search(
+            self.root,
+            "(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s))"
+            % username,
+            attributes=["cn", "memberOf", "primaryGroupId"],
+        )
         try:
-            groups = self.connection.entries[0]['memberOf'].values
+            groups = self.connection.entries[0]["memberOf"].values
             if domainsid is not None:
-                groups.append(self.getGroupDNfromID(domainsid, self.connection.entries[0]['primaryGroupId'].value))
+                groups.append(
+                    self.getGroupDNfromID(
+                        domainsid, self.connection.entries[0]["primaryGroupId"].value
+                    )
+                )
             return groups
         except LDAPKeyError:
             # No groups, probably just member of the primary group
             if domainsid is not None:
-                primarygroup = self.getGroupDNfromID(domainsid, self.connection.entries[0]['primaryGroupId'].value)
+                primarygroup = self.getGroupDNfromID(
+                    domainsid, self.connection.entries[0]["primaryGroupId"].value
+                )
                 return [primarygroup]
             else:
                 return []
@@ -97,20 +109,32 @@ class DomainDumper(object):
         eagroupdn = self.getEAGroupDN(domainsid)
         # First, simple checks
         for group in groups:
-            if 'CN=Administrators' in group or 'CN=Domain Admins' in group or dagroupdn == group:
+            if (
+                "CN=Administrators" in group
+                or "CN=Domain Admins" in group
+                or dagroupdn == group
+            ):
                 return True
             # Also for enterprise admins if applicable
-            if 'CN=Enterprise Admins' in group or (eagroupdn is not False and eagroupdn == group):
+            if "CN=Enterprise Admins" in group or (
+                eagroupdn is not False and eagroupdn == group
+            ):
                 return True
         # Now, just do a recursive check in both groups and their subgroups using LDAP_MATCHING_RULE_IN_CHAIN
-        self.connection.search(self.root,
-                               '(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s)(memberOf:1.2.840.113556.1.4.1941:=%s))' % (
-                                   username, dagroupdn), attributes=['cn', 'sAMAccountName'])
+        self.connection.search(
+            self.root,
+            "(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s)(memberOf:1.2.840.113556.1.4.1941:=%s))"
+            % (username, dagroupdn),
+            attributes=["cn", "sAMAccountName"],
+        )
         if len(self.connection.entries) > 0:
             return True
-        self.connection.search(self.root,
-                               '(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s)(memberOf:1.2.840.113556.1.4.1941:=%s))' % (
-                                   username, eagroupdn), attributes=['cn', 'sAMAccountName'])
+        self.connection.search(
+            self.root,
+            "(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s)(memberOf:1.2.840.113556.1.4.1941:=%s))"
+            % (username, eagroupdn),
+            attributes=["cn", "sAMAccountName"],
+        )
         if len(self.connection.entries) > 0:
             return True
         # At last, check the users primary group ID
@@ -119,78 +143,113 @@ class DomainDumper(object):
     # Get all users
     def getAllUsers(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search('%s' % (self.root),
-                                                         '(&(objectCategory=person)(objectClass=user))',
-                                                         attributes=MINIMAL_USERATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                "%s" % (self.root),
+                "(&(objectCategory=person)(objectClass=user))",
+                attributes=MINIMAL_USERATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         else:
-            self.connection.extend.standard.paged_search('%s' % (self.root),
-                                                         '(&(objectCategory=person)(objectClass=user))',
-                                                         attributes=ldap3.ALL_ATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                "%s" % (self.root),
+                "(&(objectCategory=person)(objectClass=user))",
+                attributes=ldap3.ALL_ATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         return self.connection.entries
 
     # Get all computers in the domain
     def getAllComputers(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search('%s' % (self.root),
-                                                         '(&(objectClass=computer)(objectClass=user))',
-                                                         attributes=CUST_COMPUTERATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                "%s" % (self.root),
+                "(&(objectClass=computer)(objectClass=user))",
+                attributes=CUST_COMPUTERATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         else:
-            self.connection.extend.standard.paged_search('%s' % (self.root),
-                                                         '(&(objectClass=computer)(objectClass=user))',
-                                                         attributes=ldap3.ALL_ATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                "%s" % (self.root),
+                "(&(objectClass=computer)(objectClass=user))",
+                attributes=ldap3.ALL_ATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         return self.connection.entries
 
     # Get all user SPNs
     def getAllUserSpns(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search('%s' % (self.root),
-                                                         '(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))',
-                                                         attributes=MINIMAL_USERATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                "%s" % (self.root),
+                "(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))",
+                attributes=MINIMAL_USERATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         else:
-            self.connection.extend.standard.paged_search('%s' % (self.root),
-                                                         '(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))',
-                                                         attributes=ldap3.ALL_ATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                "%s" % (self.root),
+                "(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*))",
+                attributes=ldap3.ALL_ATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         return self.connection.entries
 
     # Get all defined groups
     def getAllGroups(self):
         if self.config.minimal:
-            self.connection.extend.standard.paged_search(self.root, '(objectClass=group)',
-                                                         attributes=MINIMAL_GROUPATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                self.root,
+                "(objectClass=group)",
+                attributes=MINIMAL_GROUPATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         else:
-            self.connection.extend.standard.paged_search(self.root, '(objectClass=group)',
-                                                         attributes=ldap3.ALL_ATTRIBUTES, paged_size=PAGE_SIZE,
-                                                         generator=False)
+            self.connection.extend.standard.paged_search(
+                self.root,
+                "(objectClass=group)",
+                attributes=ldap3.ALL_ATTRIBUTES,
+                paged_size=PAGE_SIZE,
+                generator=False,
+            )
         return self.connection.entries
 
     # Get the domain policies (such as lockout policy)
     def getDomainPolicy(self):
-        self.connection.search(self.root, '(objectClass=domain)', attributes=ldap3.ALL_ATTRIBUTES)
+        self.connection.search(
+            self.root, "(objectClass=domain)", attributes=ldap3.ALL_ATTRIBUTES
+        )
         return self.connection.entries
 
     # Get domain trusts
     def getTrusts(self):
-        self.connection.search(self.root, '(objectClass=trustedDomain)', attributes=ldap3.ALL_ATTRIBUTES)
+        self.connection.search(
+            self.root, "(objectClass=trustedDomain)", attributes=ldap3.ALL_ATTRIBUTES
+        )
         return self.connection.entries
 
     # Get all defined security groups
     # Syntax from:
     # https://ldapwiki.willeke.com/wiki/Active%20Directory%20Group%20Related%20Searches
     def getAllSecurityGroups(self):
-        self.connection.search(self.root, '(groupType:1.2.840.113556.1.4.803:=2147483648)',
-                               attributes=ldap3.ALL_ATTRIBUTES)
+        self.connection.search(
+            self.root,
+            "(groupType:1.2.840.113556.1.4.803:=2147483648)",
+            attributes=ldap3.ALL_ATTRIBUTES,
+        )
         return self.connection.entries
 
     # Get the SID of the root object
     def getRootSid(self):
-        self.connection.search(self.root, '(objectClass=domain)', attributes=['objectSid'])
+        self.connection.search(
+            self.root, "(objectClass=domain)", attributes=["objectSid"]
+        )
         try:
             sid = self.connection.entries[0].objectSid
         except (LDAPAttributeError, LDAPCursorError, IndexError):
@@ -199,16 +258,24 @@ class DomainDumper(object):
 
     # Get group members recursively using LDAP_MATCHING_RULE_IN_CHAIN (1.2.840.113556.1.4.1941)
     def getRecursiveGroupmembers(self, groupdn):
-        self.connection.extend.standard.paged_search(self.root,
-                                                     '(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=%s))' % groupdn,
-                                                     attributes=MINIMAL_USERATTRIBUTES, paged_size=PAGE_SIZE,
-                                                     generator=False)
+        self.connection.extend.standard.paged_search(
+            self.root,
+            "(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=%s))"
+            % groupdn,
+            attributes=MINIMAL_USERATTRIBUTES,
+            paged_size=PAGE_SIZE,
+            generator=False,
+        )
         return self.connection.entries
 
     # Resolve group ID to DN
     def getGroupDNfromID(self, domainsid, gid):
-        self.connection.search(self.root, '(objectSid=%s-%d)' % (domainsid, gid), attributes=['distinguishedName'])
-        return self.connection.entries[0]['distinguishedName'].value
+        self.connection.search(
+            self.root,
+            "(objectSid=%s-%d)" % (domainsid, gid),
+            attributes=["distinguishedName"],
+        )
+        return self.connection.entries[0]["distinguishedName"].value
 
     # Get Domain Admins group DN
     def getDAGroupDN(self, domainsid):
@@ -226,35 +293,35 @@ class DomainDumper(object):
     def lookupComputerDnsNames(self):
         dnsresolver = dns.resolver.Resolver()
         dnsresolver.lifetime = 2
-        ipdef = attrDef.AttrDef('ipv4')
-        if self.config.dnsserver != '':
+        ipdef = attrDef.AttrDef("ipv4")
+        if self.config.dnsserver != "":
             dnsresolver.nameservers = [self.config.dnsserver]
         for computer in self.computers:
             try:
-                answers = dnsresolver.query(computer.dNSHostName.values[0], 'A')
+                answers = dnsresolver.query(computer.dNSHostName.values[0], "A")
                 ip = str(answers.response.answer[0][0])
             except dns.resolver.NXDOMAIN:
-                ip = 'error.NXDOMAIN'
+                ip = "error.NXDOMAIN"
             except dns.resolver.Timeout:
-                ip = 'error.TIMEOUT'
+                ip = "error.TIMEOUT"
             except (LDAPAttributeError, LDAPCursorError):
-                ip = 'error.NOHOSTNAME'
+                ip = "error.NOHOSTNAME"
             # Construct a custom attribute as workaround
             ipatt = attribute.Attribute(ipdef, computer, None)
-            ipatt.__dict__['_response'] = ip
-            ipatt.__dict__['raw_values'] = [ip]
-            ipatt.__dict__['values'] = [ip]
+            ipatt.__dict__["_response"] = ip
+            ipatt.__dict__["raw_values"] = [ip]
+            ipatt.__dict__["values"] = [ip]
             # Add the attribute to the entry's dictionary
-            computer._state.attributes['IPv4'] = ipatt
+            computer._state.attributes["IPv4"] = ipatt
 
     # Create a dictionary of all operating systems with the computer accounts that are associated
     def sortComputersByOS(self, items):
         osdict = {}
         for computer in items:
             try:
-                cos = computer.operatingSystem.value or 'Unknown'
+                cos = computer.operatingSystem.value or "Unknown"
             except (LDAPAttributeError, LDAPCursorError):
-                cos = 'Unknown'
+                cos = "Unknown"
             try:
                 osdict[cos].append(computer)
             except KeyError:
@@ -267,7 +334,7 @@ class DomainDumper(object):
     def mapGroupsIdsToDns(self):
         dnmap = {}
         for group in self.groups:
-            gid = int(group.objectSid.value.split('-')[-1])
+            gid = int(group.objectSid.value.split("-")[-1])
             dnmap[gid] = group.distinguishedName.values[0]
         self.groups_dnmap = dnmap
         return dnmap
@@ -286,7 +353,7 @@ class DomainDumper(object):
     # Unescape special DN characters from a CN (only needed if it comes from a DN)
     def unescapecn(self, cn):
         for c in ' "#+,;<=>\\\00':
-            cn = cn.replace('\\' + c, c)
+            cn = cn.replace("\\" + c, c)
         return cn
 
     # Sort users by group they belong to
@@ -297,13 +364,17 @@ class DomainDumper(object):
             self.mapGroupsIdsToDns()
         for user in items:
             try:
-                ugroups = [self.getGroupCnFromDn(group) for group in user.memberOf.values]
+                ugroups = [
+                    self.getGroupCnFromDn(group) for group in user.memberOf.values
+                ]
             # If the user is only in the default group, its memberOf property wont exist
             except (LDAPAttributeError, LDAPCursorError):
                 ugroups = []
             # Add the user default group
             try:
-                ugroups.append(self.getGroupCnFromDn(self.groups_dnmap[user.primaryGroupId.value]))
+                ugroups.append(
+                    self.getGroupCnFromDn(self.groups_dnmap[user.primaryGroupId.value])
+                )
             # Sometimes we can't query this group or it doesn't exist
             except KeyError:
                 pass

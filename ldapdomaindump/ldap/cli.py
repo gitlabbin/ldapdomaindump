@@ -19,42 +19,92 @@ def main():
     t0 = time.time()
     setup_logger()
     parser = argparse.ArgumentParser(
-        description='Domain information dumper via LDAP. '
-                    'Dumps users/computers/groups and OS/membership information to HTML/JSON/greppable output.')
+        description="Domain information dumper via LDAP. "
+        "Dumps users/computers/groups and OS/membership information to HTML/JSON/greppable output."
+    )
     parser._optionals.title = "Main options"
     parser._positionals.title = "Required options"
 
     # Main parameters
     # maingroup = parser.add_argument_group("Main options")
-    parser.add_argument("host", type=str, metavar='HOSTNAME',
-                        help="Hostname/ip or ldap://host:port connection string to connect to (use ldaps:// to use SSL)")
-    parser.add_argument("-u", "--user", type=native_str, metavar='USERNAME',
-                        help="DOMAIN\\username for authentication, leave empty for anonymous authentication")
-    parser.add_argument("-p", "--password", type=native_str, metavar='PASSWORD',
-                        help="Password or LM:NTLM hash, will prompt if not specified")
-    parser.add_argument("-at", "--authtype", type=str, choices=['NTLM', 'SIMPLE'], default='NTLM',
-                        help="Authentication type (NTLM or SIMPLE, default: NTLM)")
+    parser.add_argument(
+        "host",
+        type=str,
+        metavar="HOSTNAME",
+        help="Hostname/ip or ldap://host:port connection string to connect to (use ldaps:// to use SSL)",
+    )
+    parser.add_argument(
+        "-u",
+        "--user",
+        type=native_str,
+        metavar="USERNAME",
+        help="DOMAIN\\username for authentication, leave empty for anonymous authentication",
+    )
+    parser.add_argument(
+        "-p",
+        "--password",
+        type=native_str,
+        metavar="PASSWORD",
+        help="Password or LM:NTLM hash, will prompt if not specified",
+    )
+    parser.add_argument(
+        "-at",
+        "--authtype",
+        type=str,
+        choices=["NTLM", "SIMPLE"],
+        default="NTLM",
+        help="Authentication type (NTLM or SIMPLE, default: NTLM)",
+    )
 
     # Output parameters
     outputgroup = parser.add_argument_group("Output options")
-    outputgroup.add_argument("-o", "--outdir", type=str, metavar='DIRECTORY',
-                             help="Directory in which the dump will be saved (default: current)")
-    outputgroup.add_argument("--no-html", action='store_true', help="Disable HTML output")
-    outputgroup.add_argument("--no-json", action='store_true', help="Disable JSON output")
-    outputgroup.add_argument("--no-grep", action='store_true', help="Disable Greppable output")
-    outputgroup.add_argument("--grouped-json", action='store_true', default=False,
-                             help="Also write json files for grouped files (default: disabled)")
-    outputgroup.add_argument("-d", "--delimiter", help="Field delimiter for greppable output (default: tab)")
+    outputgroup.add_argument(
+        "-o",
+        "--outdir",
+        type=str,
+        metavar="DIRECTORY",
+        help="Directory in which the dump will be saved (default: current)",
+    )
+    outputgroup.add_argument(
+        "--no-html", action="store_true", help="Disable HTML output"
+    )
+    outputgroup.add_argument(
+        "--no-json", action="store_true", help="Disable JSON output"
+    )
+    outputgroup.add_argument(
+        "--no-grep", action="store_true", help="Disable Greppable output"
+    )
+    outputgroup.add_argument(
+        "--grouped-json",
+        action="store_true",
+        default=False,
+        help="Also write json files for grouped files (default: disabled)",
+    )
+    outputgroup.add_argument(
+        "-d", "--delimiter", help="Field delimiter for greppable output (default: tab)"
+    )
 
     # Additional options
     miscgroup = parser.add_argument_group("Misc options")
-    miscgroup.add_argument("-r", "--resolve", action='store_true',
-                           help="Resolve computer hostnames "
-                                "(might take a while and cause high traffic on large networks)")
-    miscgroup.add_argument("-n", "--dns-server",
-                           help="Use custom DNS resolver instead of system DNS (try a domain controller IP)")
-    miscgroup.add_argument("-m", "--minimal", action='store_true', default=False,
-                           help="Only query minimal set of attributes to limit memmory usage")
+    miscgroup.add_argument(
+        "-r",
+        "--resolve",
+        action="store_true",
+        help="Resolve computer hostnames "
+        "(might take a while and cause high traffic on large networks)",
+    )
+    miscgroup.add_argument(
+        "-n",
+        "--dns-server",
+        help="Use custom DNS resolver instead of system DNS (try a domain controller IP)",
+    )
+    miscgroup.add_argument(
+        "-m",
+        "--minimal",
+        action="store_true",
+        default=False,
+        help="Only query minimal set of attributes to limit memmory usage",
+    )
 
     args = parser.parse_args()
     # Create default config
@@ -89,35 +139,38 @@ def main():
     # Prompt for password if not set
     authentication = None
     if args.user is not None:
-        if args.authtype == 'SIMPLE':
-            authentication = 'SIMPLE'
+        if args.authtype == "SIMPLE":
+            authentication = "SIMPLE"
         else:
             authentication = NTLM
-        if not '\\' in args.user:
-            logging.warning('Username must include a domain, use: DOMAIN\\username')
+        if not "\\" in args.user:
+            logging.warning("Username must include a domain, use: DOMAIN\\username")
             sys.exit(1)
         if args.password is None:
             args.password = getpass.getpass()
     else:
         logging.warning(
-            'Connecting as anonymous user, dumping will probably fail. '
-            'Consider specifying a username/password to login with')
+            "Connecting as anonymous user, dumping will probably fail. "
+            "Consider specifying a username/password to login with"
+        )
 
     try:
-        logging.info('Running : `%s` request from cmd', args.host)
+        logging.info("Running : `%s` request from cmd", args.host)
         # define the server and the connection
         s = Server(args.host, get_info=ALL)
-        logging.info('Connecting to host...')
+        logging.info("Connecting to host...")
 
-        c = Connection(s, user=args.user, password=args.password, authentication=authentication)
-        logging.info('Binding to host')
+        c = Connection(
+            s, user=args.user, password=args.password, authentication=authentication
+        )
+        logging.info("Binding to host")
         # perform the Bind operation
         if not c.bind():
-            logging.warning('Could not bind with specified credentials')
+            logging.warning("Could not bind with specified credentials")
             logging.warning(c.result)
             sys.exit(1)
-        logging.info('Bind OK')
-        logging.info('Starting domain dump')
+        logging.info("Bind OK")
+        logging.info("Starting domain dump")
         # Create domaindumper object
         dd = DomainDumper(s, c, cnf)
 
@@ -132,4 +185,4 @@ def main():
         total_time = t1 - t0
         logging.info("Total time taken: " + str(total_time) + " Seconds")
 
-    logging.info('Domain dump finished')
+    logging.info("Domain dump finished")
